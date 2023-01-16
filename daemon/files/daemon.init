@@ -1,0 +1,54 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+
+start_service() {
+	local enabled device organization typeId token query
+
+	config_load 'daemon'
+	config_get enabled "enable_sector" 'enable' '0'
+	config_get device "watson_sector" 'deviceId' '0'
+	config_get organization "watson_sector" 'orgId' '0'
+	config_get typeId "watson_sector" 'typeId' '0'
+	config_get token "watson_sector" 'token' '0'
+	query=""
+
+	if [ "$device" -ne 0 ]; then
+		device="-d $device"
+		query="$query $device"
+	fi
+
+	if [ "$organization" != '0' ]; then
+		organization="-o $organization"
+		query="$query $organization"
+	fi
+
+	if [ "$typeId" != '0' ]; then
+		typeId="-t $typeId"
+		query="$query $typeId"
+	fi
+
+	if [ "$token" != '0' ]; then
+		token="-a $token"
+		query="$query $token"
+	fi
+
+	echo "$query"
+
+	if [ "$enabled" -eq 1 ]; then
+		procd_open_instance
+		procd_set_param command /usr/bin/daemon $query
+		procd_set_param pidfile /var/run/my-daemon.pid
+		procd_set_param file /etc/config/daemon
+		procd_close_instance
+	fi
+}
+
+service_triggers() {
+	procd_add_reload_trigger "daemon"
+}
+
+reload_service() {
+	stop
+	start
+}
