@@ -6,7 +6,7 @@ Index: IoT_Watson-1.0.0/Makefile
  
  paho-mqtt-build:
  	echo "Build paho mqtt c"
-+	patch ./paho.mqtt.c/Makefile ./Makefile_change.patch
++	sed -i 's/-lanl//g' ./paho.mqtt.c/Makefile
  	make -C paho.mqtt.c
  
  tests:
