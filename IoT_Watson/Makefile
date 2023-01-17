@@ -17,6 +17,10 @@ define Package/IoT_Watson
 	DEPENDS:=+libopenssl
 endef
 
+define Build/Configure
+	cp Makefile_change.patch $(PKG_BUILD_DIR)
+endef
+
 define Build/InstallDev
 	$(INSTALL_DIR) $(STAGING_DIR)/usr/include
 	$(INSTALL_DIR) $(STAGING_DIR)/usr/lib/
@@ -35,6 +39,5 @@ define Package/IoT_Watson/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/paho.mqtt.c/build/output/libpaho-mqtt3as.so* $(1)/usr/lib
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/build/libiotp-as-device.so* $(1)/usr/lib
 endef
-
 
 $(eval $(call BuildPackage,IoT_Watson))
