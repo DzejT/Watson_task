@@ -1,12 +1,11 @@
-Index: IoT_Watson-1.0.0/Makefile
-===================================================================
---- IoT_Watson-1.0.0.orig/Makefile
-+++ IoT_Watson-1.0.0/Makefile
-@@ -323,6 +323,7 @@ paho-mqtt-download:
+--- a/Makefile
++++ b/Makefile
+@@ -323,7 +323,7 @@ paho-mqtt-download:
  
  paho-mqtt-build:
  	echo "Build paho mqtt c"
-+	sed -i 's/-lanl//g' ./paho.mqtt.c/Makefile
- 	make -C paho.mqtt.c
+-	make -C paho.mqtt.c
++	make -C paho.mqtt.c GAI_LIB=
  
  tests:
+ 	make -C test

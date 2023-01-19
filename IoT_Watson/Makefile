@@ -17,10 +17,6 @@ define Package/IoT_Watson
 	DEPENDS:=+libopenssl
 endef
 
-define Build/Configure
-	cp Makefile_change.patch $(PKG_BUILD_DIR)
-endef
-
 define Build/InstallDev
 	$(INSTALL_DIR) $(STAGING_DIR)/usr/include
 	$(INSTALL_DIR) $(STAGING_DIR)/usr/lib/
