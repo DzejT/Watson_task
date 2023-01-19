@@ -1,19 +1,7 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <memory.h>
-#include <iotp_device.h>
-#include <argp.h>
-#include <syslog.h>
-#include <libubus.h>
+#include "utils.h"
 
-
-void create_daemon(pid_t *pid, char *PID_FILE){
+void create_daemon(char *PID_FILE){
+    pid_t pid;
     FILE *fp;
     if ( (pid = fork()) == -1 )
     {
@@ -46,13 +34,9 @@ void create_daemon(pid_t *pid, char *PID_FILE){
     }
 }
 
-
-void close_program(IoTPDevice *device, IoTPConfig *config){
-    if(device != NULL){
-        IoTPDevice_disconnect(device);
-        IoTPDevice_destroy(device);
+void check_status(int rc, char *error_msg){
+    if ( rc != 0 ) {
+        syslog (LOG_ERR, "%s rc=%d\n", error_msg, rc);
+        sleep(5);
     }
-    if(config != NULL)
-        IoTPConfig_clear(config);
-    exit(1);
 }

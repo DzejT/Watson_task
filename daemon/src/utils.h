@@ -1,5 +1,19 @@
-void create_daemon(pid_t *pid, char *PID_FILE);
-void close_program(IoTPDevice *device, IoTPConfig *config);
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <memory.h>
+#include <iotp_device.h>
+#include <argp.h>
+#include <syslog.h>
+
+
+void create_daemon(char *PID_FILE);
+void check_status(int rc, char *error_msg);
 
 struct arguments{
     char *args[5];

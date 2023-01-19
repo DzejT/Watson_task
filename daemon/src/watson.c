@@ -1,96 +1,44 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <memory.h>
-#include <iotp_device.h>
-#include <argp.h>
-#include <syslog.h>
 #include <libubus.h>
 #include "utils.h"
-#include "ubus.h"
+#include "ubus.h" 
 
 
+void create_config(IoTPConfig **config, IoTPDevice *device, struct arguments arguments){
+    int rc;
 
-#define CONFIG_FILE "/usr/bin/config.yaml"
+    while((rc = IoTPConfig_setLogHandler(IoTPLog_FileDescriptor, stdout)) != 0)
+        check_status(rc, "Failed to set IoTP Client log handler");
 
-
-
-void handle_log_in(struct arguments arguments, char cwd[], int *run_loop){
-
-    int testCycle = 0;
-    int rc = 0;
+    while((rc = IoTPConfig_create(config, NULL)) != 0)
+        check_status(rc, "Failed to initialize configuration");
     
-    
-    IoTPConfig *config = NULL;
-    IoTPDevice *device = NULL;
-
-
-    rc = IoTPConfig_setLogHandler(IoTPLog_FileDescriptor, stdout);
-    if ( rc != 0 ) {
-        syslog (LOG_ERR, "WARN: Failed to set IoTP Client log handler: rc=%d\n", rc);
-        close_program(device, config);
-    }
-
-    rc = IoTPConfig_create(&config, CONFIG_FILE);
-    if ( rc != 0 ) {
-        syslog (LOG_ERR, "ERROR: Failed to initialize configuration: rc=%d\n", rc);
-        syslog (LOG_ERR, "ERROR: Config file is missing \n");
-        close_program(device, config);
-    }
-
-    override_config(arguments, config);
-
-
-    rc = IoTPDevice_create(&device, config);
-    if ( rc != 0 ) {
-        syslog (LOG_ERR, "ERROR: Failed to configure IoTP device: rc=%d\n", rc);
-        close_program(device, config);
-    }
-
-    rc = IoTPDevice_connect(device);
-
-    if ( rc != 0 ) {
-        syslog (LOG_ERR, "ERROR: Failed to connect to Watson IoT Platform: rc=%d\n", rc);
-        syslog (LOG_ERR, "ERROR: Returned error reason: %s\n", IOTPRC_toString(rc));
-
-        close_program(device, config);
-    }
-
-    publish_data(device, testCycle, run_loop);
-
-    rc = IoTPDevice_disconnect(device);
-    if ( rc != IOTPRC_SUCCESS ) {
-        syslog (LOG_ERR, "ERROR: Failed to disconnect from  Watson IoT Platform: rc=%d\n", rc);
-    }
-
-    IoTPDevice_destroy(device);
-    IoTPConfig_clear(config);
+    while((rc = override_config(arguments, *config)) != 0)
+        check_status(rc, "Failed to read configurations");
 }
 
+void connect_device(IoTPDevice **device, IoTPConfig *config){
+    int rc;
 
+    while((rc = IoTPDevice_create(device, config)) != 0)
+        check_status(rc, "Failed to configure IoTP device");
 
-void publish_data(IoTPDevice *device, int testCycle, int *run_loop){
+    while((rc = IoTPDevice_connect(*device)) != 0)
+        check_status(rc, "Failed to connect to Watson IoT Platform");
+
+}
+
+void publish_data(IoTPDevice *device, int *run_loop){
     struct ubus_context *ctx;
+    struct myArgs *RAMdata;
 
     ctx = ubus_connect(NULL);
 	if (!ctx) {
 		fprintf(stderr, "Failed to connect to ubus\n");
 	}
 
-
     int rc = 0;
-    int cycle = 0;
     char data[256];
 
-    struct myArgs *RAMdata;
-
-
-    
     while(*run_loop == 0)
     {       
         RAMdata = get_response_from_ubus(ctx);
@@ -114,26 +62,23 @@ void publish_data(IoTPDevice *device, int testCycle, int *run_loop){
         rc = IoTPDevice_sendEvent(device,"status", data, "json", QoS0, NULL);
         syslog (LOG_INFO,  "RC from publishEvent(): %d\n", rc);
 
-
-        if ( testCycle > 0 ) {
-            cycle += 1;
-            if ( cycle >= testCycle ) {
-                break;
-            }
-        }
         free(RAMdata);
         sleep(10);
     }
     ubus_free(ctx);
 }
 
-void override_config(struct arguments args, IoTPConfig *config){
-    if(args.org_id != NULL)
-        IoTPConfig_setProperty(config, "identity.orgId", args.org_id);
-    if(args.type_id != NULL)
-        IoTPConfig_setProperty(config, "identity.typeId", args.type_id);
-    if(args.device_id != NULL)
-        IoTPConfig_setProperty(config, "identity.deviceId", args.device_id);
-    if(args.auth_token != NULL)
-        IoTPConfig_setProperty(config, "auth.token", args.auth_token);
+
+int override_config(struct arguments args, IoTPConfig *config){
+    if(args.org_id == NULL || args.type_id == NULL || args.device_id == NULL || args.auth_token == NULL){
+        syslog(LOG_ERR, "Watson device information is incorrect");
+        return 1;
+    }
+    IoTPConfig_setProperty(config, IoTPConfig_identity_orgId, args.org_id);
+    IoTPConfig_setProperty(config, IoTPConfig_identity_typeId, args.type_id);
+    IoTPConfig_setProperty(config, IoTPConfig_identity_deviceId, args.device_id);
+    IoTPConfig_setProperty(config, IoTPConfig_auth_token, args.auth_token);
+
+    return 0;
+    
 }

@@ -1,15 +1,3 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <memory.h>
-#include <iotp_device.h>
-#include <argp.h>
-#include <syslog.h>
 #include "utils.h"
 #include "watson.h"
 
@@ -41,41 +29,33 @@ struct argp argp = { options, parse_opt, 0, 0};
 int main(int argc, char *argv[])
 {  
     openlog ("Daemon", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-
     syslog (LOG_INFO, "Daemon started");
-
     signal(SIGINT, sigHandler);
     signal(SIGTERM, sigHandler);
 
-
-    char cwd[256];
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        syslog (LOG_INFO, "Current working dir: %s\n", cwd);
-    }
-    else {
-        syslog (LOG_ERR, "getcwd() error");
-        return 1;
-    }
-
-    pid_t pid;
-
-    struct arguments args;
-
-    args.device_id = NULL;
-    args.org_id = NULL;
-    args.type_id = NULL;
-    args.auth_token = NULL;
-    args.daemon = 0;
-
+    struct arguments args = {0};
     argp_parse (&argp, argc, argv, 0, 0, &args);
 
-
     if(args.daemon == 1){
-        create_daemon(&pid, PID_FILE);
+        create_daemon(PID_FILE);
     }
     
-    handle_log_in(args, cwd, &run_loop);
+    int rc = 0;
+    IoTPConfig *config = NULL;
+    IoTPDevice *device = NULL;
+
+    create_config(&config, device, args);
+    connect_device(&device, config);
+    publish_data(device, &run_loop);
+   
+
+    if((rc = IoTPDevice_disconnect(device)) != 0)
+        check_status(rc, "Failed to disconnect from  Watson IoT Platform");
+
     closelog ();
+
+    IoTPDevice_destroy(device);
+    IoTPConfig_clear(config);
     
     return 0;
 
